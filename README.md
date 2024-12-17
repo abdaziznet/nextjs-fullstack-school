@@ -1,4 +1,4 @@
-# Dev School Management Dashboard
+# Dev School Management Dashboard - FullStack
 
 ## Getting Started
 
