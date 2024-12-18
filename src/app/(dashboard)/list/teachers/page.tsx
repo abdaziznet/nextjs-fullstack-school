@@ -65,8 +65,12 @@ const renderRow = (item: TeacherList) => (
       </div>
     </td>
     <td className="hidden md:table-cell">{item.username}</td>
-    <td className="hidden md:table-cell">{item.subjects.join(", ")}</td>
-    <td className="hidden md:table-cell">{item.classes.join(", ")}</td>
+    <td className="hidden md:table-cell">
+      {item.subjects.map((s) => s.name).join(", ")}
+    </td>
+    <td className="hidden md:table-cell">
+      {item.classes.map((c) => c.name).join(", ")}
+    </td>
     <td className="hidden md:table-cell">{item.phone}</td>
     <td className="hidden md:table-cell">{item.address}</td>
     <td>
@@ -84,10 +88,21 @@ const renderRow = (item: TeacherList) => (
   </tr>
 );
 
-const TeacherListPage = async () => {
-  const teachers = await prisma.teacher.findMany({});
+const TeacherListPage = async ({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string } | undefined;
+}) => {
+  console.log(searchParams);
+  const data = await prisma.teacher.findMany({
+    include: {
+      subjects: true,
+      classes: true,
+    },
+    take: 5,
+  });
 
-  console.log(teachers);
+  // console.log(data);
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
@@ -109,7 +124,7 @@ const TeacherListPage = async () => {
       </div>
       {/* LIST */}
       <div className="">
-        <Table columns={columns} renderRow={renderRow} data={teachersData} />
+        <Table columns={columns} renderRow={renderRow} data={data} />
       </div>
       {/* PAGINATION */}
 
