@@ -2,9 +2,9 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
+import { getUserRole } from "@/lib/utils";
 import { Class, Exam, Prisma, Subject, Teacher } from "@prisma/client";
 import dayjs from "dayjs";
 import Image from "next/image";
@@ -36,10 +36,14 @@ const columns = [
     accessor: "date",
     className: "hidden lg:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "actions",
-  },
+  ...(getUserRole === "admin"
+    ? [
+        {
+          header: "Actions",
+          accessor: "action",
+        },
+      ]
+    : []),
 ];
 const renderRow = (item: ExamList) => (
   <tr
@@ -60,7 +64,7 @@ const renderRow = (item: ExamList) => (
     </td>
     <td>
       <div className="flex items-center gap-2">
-        {role === "admin" && (
+        {getUserRole === "admin" && (
           <>
             <FormModal table="exam" type="update" data={item} />
             <FormModal table="exam" type="delete" id={item.id} />
@@ -136,7 +140,7 @@ const ExamListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {role === "admin" && (
+              {getUserRole === "admin" && (
                 // <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 //   <Image src={"/plus.png"} alt="" width={14} height={14} />
                 // </button>

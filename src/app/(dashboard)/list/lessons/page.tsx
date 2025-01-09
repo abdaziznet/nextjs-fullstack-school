@@ -2,15 +2,14 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { lessonsData, role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
+import { getUserRole } from "@/lib/utils";
 import { Class, Lesson, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
-import Link from "next/link";
 
 type LessonList = Lesson & { class: Class } & { teacher: Teacher } & {
-  subject: Subject;
+  Subject: Subject;
 };
 
 const columns = [
@@ -27,10 +26,14 @@ const columns = [
     accessor: "teacher",
     className: "hidden lg:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "actions",
-  },
+  ...(getUserRole === "admin"
+    ? [
+        {
+          header: "Actions",
+          accessor: "action",
+        },
+      ]
+    : []),
 ];
 const renderRow = (item: LessonList) => (
   <tr
@@ -39,14 +42,14 @@ const renderRow = (item: LessonList) => (
   >
     <td className="flex items-center gap-4 p-4">
       <div className="flex flex-col">
-        <h3 className="font-semibold">{item.subject.name}</h3>
+        <h3 className="font-semibold">{item.Subject.name}</h3>
       </div>
     </td>
     <td>{item.class.name}</td>
     <td className="hidden md:table-cell">{item.teacher.name}</td>
     <td>
       <div className="flex items-center gap-2">
-        {role === "admin" && (
+        {getUserRole === "admin" && (
           <>
             <FormModal table="lesson" type="update" data={item} />
             <FormModal table="lesson" type="delete" id={item.id} />
@@ -114,7 +117,7 @@ const LessonListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {role === "admin" && (
+              {getUserRole === "admin" && (
                 // <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 //   <Image src={"/plus.png"} alt="" width={14} height={14} />
                 // </button>

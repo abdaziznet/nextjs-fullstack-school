@@ -2,13 +2,12 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { assignmentsData, lessonsData, role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
+import { getUserId, getUserRole } from "@/lib/utils";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
 import dayjs from "dayjs";
 import Image from "next/image";
-import Link from "next/link";
 
 type AssignmentList = Assignment & {
   lesson: { Subject: Subject; teacher: Teacher; class: Class };
@@ -33,10 +32,14 @@ const columns = [
     accessor: "dueDate",
     className: "hidden lg:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "actions",
-  },
+  ...(getUserRole === "admin"
+    ? [
+        {
+          header: "Actions",
+          accessor: "action",
+        },
+      ]
+    : []),
 ];
 const renderRow = (item: AssignmentList) => (
   <tr
@@ -57,7 +60,7 @@ const renderRow = (item: AssignmentList) => (
     </td>
     <td>
       <div className="flex items-center gap-2">
-        {role === "admin" && (
+        {(getUserRole === "admin" || getUserRole === "teacher") && (
           <>
             <FormModal table="assignment" type="update" data={item} />
             <FormModal table="assignment" type="delete" id={item.id} />
@@ -103,6 +106,35 @@ const AssignmentListPage = async ({
       }
     }
 
+    // ROLE CONDITIONS
+    switch (getUserRole) {
+      case "admin":
+        break;
+      case "teacher":
+        query.lesson.teacherId = getUserId!;
+        break;
+      case "student":
+        query.lesson.class = {
+          students: {
+            some: {
+              id: getUserId!,
+            },
+          },
+        };
+        break;
+      case "parent":
+        query.lesson.class = {
+          students: {
+            some: {
+              parentId: getUserId!,
+            },
+          },
+        };
+        break;
+      default:
+        break;
+    }
+
     const [data, count] = await prisma.$transaction([
       prisma.assignment.findMany({
         where: query,
@@ -136,7 +168,7 @@ const AssignmentListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {role === "admin" && (
+              {getUserRole === "admin" && (
                 <FormModal table="assignment" type="create" />
               )}
             </div>

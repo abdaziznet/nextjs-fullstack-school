@@ -2,12 +2,11 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { parentsData, role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
+import { getUserRole } from "@/lib/utils";
 import { Parent, Prisma, Student } from "@prisma/client";
 import Image from "next/image";
-import Link from "next/link";
 
 type ParentList = Parent & { students: Student[] };
 
@@ -31,10 +30,14 @@ const columns = [
     accessor: "address",
     className: "hidden lg:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "actions",
-  },
+  ...(getUserRole === "admin"
+    ? [
+        {
+          header: "Actions",
+          accessor: "action",
+        },
+      ]
+    : []),
 ];
 const renderRow = (item: ParentList) => (
   <tr
@@ -61,7 +64,7 @@ const renderRow = (item: ParentList) => (
     <td className="hidden md:table-cell">{item.address}</td>
     <td>
       <div className="flex items-center gap-2">
-        {role === "admin" && (
+        {getUserRole === "admin" && (
           <>
             <FormModal table="parent" type="update" data={item} />
             <FormModal table="parent" type="delete" id={item.id} />
@@ -124,7 +127,9 @@ const ParentListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {role === "admin" && <FormModal table="parent" type="create" />}
+              {getUserRole === "admin" && (
+                <FormModal table="parent" type="create" />
+              )}
             </div>
           </div>
         </div>

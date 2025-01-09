@@ -2,13 +2,12 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { resultsData, role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
+import { getUserRole } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
 import dayjs from "dayjs";
 import Image from "next/image";
-import Link from "next/link";
 
 type ResultList = {
   id: number;
@@ -51,10 +50,14 @@ const columns = [
     accessor: "date",
     className: "hidden md:table-cell",
   },
-  {
-    header: "Actions",
-    accessor: "actions",
-  },
+  ...(getUserRole === "admin"
+    ? [
+        {
+          header: "Actions",
+          accessor: "action",
+        },
+      ]
+    : []),
 ];
 const renderRow = (item: ResultList) => (
   <tr
@@ -73,7 +76,7 @@ const renderRow = (item: ResultList) => (
     </td>
     <td>
       <div className="flex items-center gap-2">
-        {(role === "admin" || role === "teacher") && (
+        {(getUserRole === "admin" || getUserRole === "teacher") && (
           <>
             <FormModal table="result" type="update" data={item} />
             <FormModal table="result" type="delete" id={item.id} />
@@ -181,7 +184,7 @@ const ResultListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {role === "admin" && (
+              {getUserRole === "admin" && (
                 // <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 //   <Image src={"/plus.png"} alt="" width={14} height={14} />
                 // </button>
