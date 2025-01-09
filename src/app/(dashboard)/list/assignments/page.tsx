@@ -6,6 +6,7 @@ import { assignmentsData, lessonsData, role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
+import dayjs from "dayjs";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -51,7 +52,9 @@ const renderRow = (item: AssignmentList) => (
     <td className="hidden md:table-cell">
       {item.lesson.teacher.name + " " + item.lesson.teacher.surname}
     </td>
-    <td className="hidden md:table-cell">{item.dueDate.toDateString()}</td>
+    <td className="hidden md:table-cell">
+      {dayjs(item.dueDate).format("DD/MM/YYYY")}
+    </td>
     <td>
       <div className="flex items-center gap-2">
         {role === "admin" && (
@@ -78,10 +81,18 @@ const AssignmentListPage = async ({
 
   const query: Prisma.AssignmentWhereInput = {};
 
+  query.lesson = {};
+
   if (queryParams) {
     for (const [key, value] of Object.entries(queryParams)) {
       if (value !== undefined) {
         switch (key) {
+          case "classId":
+            query.lesson.classId = parseInt(value);
+            break;
+          case "teacherId":
+            query.lesson.teacherId = value;
+            break;
           case "search":
             query.title = { contains: value, mode: "insensitive" };
             break;
@@ -99,7 +110,7 @@ const AssignmentListPage = async ({
           lesson: {
             select: {
               Subject: { select: { name: true } },
-              teacher: { select: { name: true } },
+              teacher: { select: { name: true, surname: true } },
               class: { select: { name: true } },
             },
           },

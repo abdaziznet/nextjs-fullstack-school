@@ -6,6 +6,7 @@ import { announcementsData, eventsData, examsData, role } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
 import { Announcement, Class, Prisma } from "@prisma/client";
+import dayjs from "dayjs";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -43,7 +44,9 @@ const renderRow = (item: AnnouncementList) => (
       </div>
     </td>
     <td>{item.class.name}</td>
-    <td className="hidden md:table-cell">{item.date.toDateString()}</td>
+    <td className="hidden md:table-cell">
+      {dayjs(item.date).format("DD/MM/YYYY")}
+    </td>
     <td>
       <div className="flex items-center gap-2">
         {role === "admin" && (
