@@ -4,7 +4,7 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/settings";
-import { getUserId, getUserRole } from "@/lib/utils";
+import { auth } from "@clerk/nextjs/server";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
 import dayjs from "dayjs";
 import Image from "next/image";
@@ -13,69 +13,73 @@ type AssignmentList = Assignment & {
   lesson: { Subject: Subject; teacher: Teacher; class: Class };
 };
 
-const columns = [
-  {
-    header: "Assignment Name",
-    accessor: "info",
-  },
-  {
-    header: "Class",
-    accessor: "class",
-  },
-  {
-    header: "Teacher",
-    accessor: "teacher",
-    className: "hidden lg:table-cell",
-  },
-  {
-    header: "Due Date",
-    accessor: "dueDate",
-    className: "hidden lg:table-cell",
-  },
-  ...(getUserRole === "admin"
-    ? [
-        {
-          header: "Actions",
-          accessor: "action",
-        },
-      ]
-    : []),
-];
-const renderRow = (item: AssignmentList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200  even:bg-slate-50 text-sm hover:bg-secondary-purple-light"
-  >
-    <td className="flex items-center gap-4 p-4">
-      <div className="flex flex-col">
-        <h3 className="font-semibold">{item.lesson.Subject.name}</h3>
-      </div>
-    </td>
-    <td>{item.lesson.class.name}</td>
-    <td className="hidden md:table-cell">
-      {item.lesson.teacher.name + " " + item.lesson.teacher.surname}
-    </td>
-    <td className="hidden md:table-cell">
-      {dayjs(item.dueDate).format("DD/MM/YYYY")}
-    </td>
-    <td>
-      <div className="flex items-center gap-2">
-        {(getUserRole === "admin" || getUserRole === "teacher") && (
-          <>
-            <FormModal table="assignment" type="update" data={item} />
-            <FormModal table="assignment" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
-
 const AssignmentListPage = async ({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
+  const { userId, sessionClaims } = await auth();
+  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const currentUserId = userId;
+
+  const columns = [
+    {
+      header: "Assignment Name",
+      accessor: "info",
+    },
+    {
+      header: "Class",
+      accessor: "class",
+    },
+    {
+      header: "Teacher",
+      accessor: "teacher",
+      className: "hidden lg:table-cell",
+    },
+    {
+      header: "Due Date",
+      accessor: "dueDate",
+      className: "hidden lg:table-cell",
+    },
+    ...(role === "admin" || role === "teacher"
+      ? [
+          {
+            header: "Actions",
+            accessor: "action",
+          },
+        ]
+      : []),
+  ];
+  const renderRow = (item: AssignmentList) => (
+    <tr
+      key={item.id}
+      className="border-b border-gray-200  even:bg-slate-50 text-sm hover:bg-secondary-purple-light"
+    >
+      <td className="flex items-center gap-4 p-4">
+        <div className="flex flex-col">
+          <h3 className="font-semibold">{item.lesson.Subject.name}</h3>
+        </div>
+      </td>
+      <td>{item.lesson.class.name}</td>
+      <td className="hidden md:table-cell">
+        {item.lesson.teacher.name + " " + item.lesson.teacher.surname}
+      </td>
+      <td className="hidden md:table-cell">
+        {dayjs(item.dueDate).format("DD/MM/YYYY")}
+      </td>
+      <td>
+        <div className="flex items-center gap-2">
+          {(role === "admin" || role === "teacher") && (
+            <>
+              <FormModal table="assignment" type="update" data={item} />
+              <FormModal table="assignment" type="delete" id={item.id} />
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+
   const { page, ...queryParams } = searchParams;
 
   const p = page ? parseInt(page) : 1;
@@ -107,17 +111,17 @@ const AssignmentListPage = async ({
     }
 
     // ROLE CONDITIONS
-    switch (getUserRole) {
+    switch (role) {
       case "admin":
         break;
       case "teacher":
-        query.lesson.teacherId = getUserId!;
+        query.lesson.teacherId = currentUserId!;
         break;
       case "student":
         query.lesson.class = {
           students: {
             some: {
-              id: getUserId!,
+              id: currentUserId!,
             },
           },
         };
@@ -126,7 +130,7 @@ const AssignmentListPage = async ({
         query.lesson.class = {
           students: {
             some: {
-              parentId: getUserId!,
+              parentId: currentUserId!,
             },
           },
         };
@@ -168,7 +172,7 @@ const AssignmentListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {getUserRole === "admin" && (
+              {(role === "admin" || role === "teacher") && (
                 <FormModal table="assignment" type="create" />
               )}
             </div>

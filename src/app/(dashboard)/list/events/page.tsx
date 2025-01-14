@@ -7,85 +7,90 @@ import { PAGE_SIZE } from "@/lib/settings";
 import { Class, Event, Prisma } from "@prisma/client";
 import Image from "next/image";
 import dayjs from "dayjs";
-import { getUserRole } from "@/lib/utils";
+import { auth } from "@clerk/nextjs/server";
 
 type EventList = Event & { class: Class };
 
-const columns = [
-  {
-    header: "Event Name",
-    accessor: "info",
-  },
-  {
-    header: "Class",
-    accessor: "class",
-  },
-
-  {
-    header: "Date",
-    accessor: "date",
-    className: "hidden lg:table-cell",
-  },
-  {
-    header: "Start Time",
-    accessor: "startTime",
-    className: "hidden lg:table-cell",
-  },
-  {
-    header: "End Time",
-    accessor: "endTime",
-    className: "hidden lg:table-cell",
-  },
-  ...(getUserRole === "admin"
-    ? [
-        {
-          header: "Actions",
-          accessor: "action",
-        },
-      ]
-    : []),
-];
-const renderRow = (item: EventList) => (
-  <tr
-    key={item.id}
-    className="border-b border-gray-200  even:bg-slate-50 text-sm hover:bg-secondary-purple-light"
-  >
-    <td className="flex items-center gap-4 p-4">
-      <div className="flex flex-col">
-        <h3 className="font-semibold">{item.title}</h3>
-      </div>
-    </td>
-    <td>{item.class?.name}</td>
-    <td className="hidden md:table-cell">
-      {dayjs(item.startTime).format("DD/MM/YYYY")}
-    </td>
-    <td className="hidden md:table-cell">
-      {dayjs(item.startTime).isValid()
-        ? dayjs(item.startTime).format("HH:mm")
-        : "Invalid Time"}
-    </td>
-    <td className="hidden md:table-cell">
-      {dayjs(item.endTime).isValid()
-        ? dayjs(item.endTime).format("HH:mm")
-        : "Invalid Time"}
-    </td>
-    <td>
-      <div className="flex items-center gap-2">
-        {getUserRole === "admin" && (
-          <>
-            <FormModal table="event" type="update" data={item} />
-            <FormModal table="event" type="delete" id={item.id} />
-          </>
-        )}
-      </div>
-    </td>
-  </tr>
-);
 const EventListPage = async ({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
+  const { userId, sessionClaims } = await auth();
+  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const currentUserId = userId;
+
+  const columns = [
+    {
+      header: "Event Name",
+      accessor: "info",
+    },
+    {
+      header: "Class",
+      accessor: "class",
+    },
+
+    {
+      header: "Date",
+      accessor: "date",
+      className: "hidden lg:table-cell",
+    },
+    {
+      header: "Start Time",
+      accessor: "startTime",
+      className: "hidden lg:table-cell",
+    },
+    {
+      header: "End Time",
+      accessor: "endTime",
+      className: "hidden lg:table-cell",
+    },
+    ...(role === "admin"
+      ? [
+          {
+            header: "Actions",
+            accessor: "action",
+          },
+        ]
+      : []),
+  ];
+  const renderRow = (item: EventList) => (
+    <tr
+      key={item.id}
+      className="border-b border-gray-200  even:bg-slate-50 text-sm hover:bg-secondary-purple-light"
+    >
+      <td className="flex items-center gap-4 p-4">
+        <div className="flex flex-col">
+          <h3 className="font-semibold">{item.title}</h3>
+        </div>
+      </td>
+      <td>{item.class?.name || "-"}</td>
+      <td className="hidden md:table-cell">
+        {dayjs(item.startTime).format("DD/MM/YYYY")}
+      </td>
+      <td className="hidden md:table-cell">
+        {dayjs(item.startTime).isValid()
+          ? dayjs(item.startTime).format("HH:mm")
+          : "Invalid Time"}
+      </td>
+      <td className="hidden md:table-cell">
+        {dayjs(item.endTime).isValid()
+          ? dayjs(item.endTime).format("HH:mm")
+          : "Invalid Time"}
+      </td>
+      <td>
+        <div className="flex items-center gap-2">
+          {role === "admin" && (
+            <>
+              <FormModal table="event" type="update" data={item} />
+              <FormModal table="event" type="delete" id={item.id} />
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+
   const { page, ...queryParams } = searchParams;
 
   const p = page ? parseInt(page) : 1;
@@ -106,6 +111,20 @@ const EventListPage = async ({
         }
       }
     }
+
+    // ROLE CONDITIONS
+    const roleConditions = {
+      teacher: { lessons: { some: { teacherId: currentUserId! } } },
+      student: { students: { some: { id: currentUserId! } } },
+      parent: { students: { some: { parentId: currentUserId! } } },
+    };
+
+    query.OR = [
+      { classId: null },
+      {
+        class: roleConditions[role as keyof typeof roleConditions] || {},
+      },
+    ];
 
     const [data, count] = await prisma.$transaction([
       prisma.event.findMany({
@@ -133,9 +152,7 @@ const EventListPage = async ({
               <button className="w-8 h-8 flex items-center justify-center rounded-full bg-third-yellow">
                 <Image src={"/sort.png"} alt="" width={14} height={14} />
               </button>
-              {getUserRole === "admin" && (
-                <FormModal table="event" type="create" />
-              )}
+              {role === "admin" && <FormModal table="event" type="create" />}
             </div>
           </div>
         </div>
