@@ -1,13 +1,11 @@
-"use client";
 import Announcements from "@/components/Announcements";
-import BigCalendar from "@/components/BigCalendar";
 import BigCalendarContainer from "@/components/BigCalendarContainer";
+import FormContainer from "@/components/FormContainer";
 import Performance from "@/components/Performance";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
-import { studentsData } from "@/lib/data";
 import prisma from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
 import { Class, Student } from "@prisma/client";
-import dayjs from "dayjs";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,6 +16,9 @@ const StudentDetailPage = async ({
 }: {
   params: { id: string };
 }) => {
+  const { sessionClaims } = await auth();
+  const role = (sessionClaims?.metadata as { role?: string })?.role;
+
   const student:
     | (Student & {
         class: Class & { _count: { lessons: number } };
@@ -32,6 +33,7 @@ const StudentDetailPage = async ({
   if (!student) {
     return notFound();
   }
+
   return (
     <div className="flex-1 p-4 flex flex-col gap-4 xl:flex-row">
       {/* LEFT */}
@@ -54,12 +56,12 @@ const StudentDetailPage = async ({
                 <h1 className="text-xl font-semibold">
                   {student.name + " " + student.surname}
                 </h1>
+                {role === "admin" && (
+                  <FormContainer table="student" type="update" data={student} />
+                )}
               </div>
-
               <p className="text-sm text-gray-500">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-                eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-                enim ad minim veniam.
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
               </p>
               <div className="flex items-center justify-between gap-2 flex-wrap text-xs font-medium">
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
@@ -68,7 +70,9 @@ const StudentDetailPage = async ({
                 </div>
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/date.png" alt="" width={14} height={14} />
-                  <span>{dayjs(student.birthday).format("DD/MM/YYYY")}</span>
+                  <span>
+                    {new Intl.DateTimeFormat("en-GB").format(student.birthday)}
+                  </span>
                 </div>
                 <div className="w-full md:w-1/3 lg:w-full 2xl:w-1/3 flex items-center gap-2">
                   <Image src="/mail.png" alt="" width={14} height={14} />
@@ -95,10 +99,6 @@ const StudentDetailPage = async ({
               <Suspense fallback="loading...">
                 <StudentAttendanceCard id={student.id} />
               </Suspense>
-              <div className="">
-                <h1 className="text-xl font-semibold">90%</h1>
-                <span className="text-sm text-gray-400">Attendance</span>
-              </div>
             </div>
             {/* CARD */}
             <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
@@ -160,13 +160,13 @@ const StudentDetailPage = async ({
           <h1 className="text-xl font-semibold">Shortcuts</h1>
           <div className="mt-4 flex gap-4 flex-wrap text-xs text-gray-500">
             <Link
-              className="p-3 rounded-md bg-lamaSkyLight"
+              className="p-3 rounded-md bg-primary-sky-light"
               href={`/list/lessons?classId=${student.class.id}`}
             >
               Student&apos;s Lessons
             </Link>
             <Link
-              className="p-3 rounded-md bg-lamaPurpleLight"
+              className="p-3 rounded-md bg-secondary-purple-light"
               href={`/list/teachers?classId=${student.class.id}`}
             >
               Student&apos;s Teachers
@@ -178,13 +178,13 @@ const StudentDetailPage = async ({
               Student&apos;s Exams
             </Link>
             <Link
-              className="p-3 rounded-md bg-lamaSkyLight"
+              className="p-3 rounded-md bg-green-50"
               href={`/list/assignments?classId=${student.class.id}`}
             >
               Student&apos;s Assignments
             </Link>
             <Link
-              className="p-3 rounded-md bg-lamaYellowLight"
+              className="p-3 rounded-md bg-third-yellow-light"
               href={`/list/results?studentId=${student.id}`}
             >
               Student&apos;s Results
